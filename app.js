@@ -1,5 +1,5 @@
 const express = require("express");
-
+const mongoose  = require("mongoose");
 const bodyParser = require("body-parser");
 const app = express();
 
@@ -10,9 +10,47 @@ app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({extended:true}));
 app.use(express.static("public"));
 
-app.get("/", function(req,res){
-    var tooday = new Date();
+mongoose.connect("mongodb://localhost:27017/todolistDB", { useNewUrlParser: true , useUnifiedTopology: true  });
 
+const itemsSchema = {
+    name: String
+};
+
+const Item = mongoose.model("Item", itemsSchema);
+
+const item1 = new Item({
+    name: "Buy Food"    
+})
+const item2 = new Item({
+    name: "Cook Food"    
+})
+const item3 = new Item({
+    name: "Eat Food"    
+})
+
+const defaultItems  = [item1, item2, item3];
+
+app.get("/", function(req,res){
+
+
+    Item.find({}, function(err, foundItems){
+
+        if(foundItems.length === 0){
+            Item.insertMany(defaultItems, function(err){
+                if(err){
+                console.log(err);
+            }else{
+                 console.log("Succesfully saved default items to DB");
+            }
+        });
+        res.redirect("/");
+        }else{
+            res.render("list", {kindOfDay: day, newListItems :foundItems})
+
+        }
+        
+    })
+    var tooday = new Date();
     var option = {
         weekday: "long",
         day: "numeric",
@@ -21,17 +59,34 @@ app.get("/", function(req,res){
 
     var day = tooday.toLocaleDateString("en-US", option);
     
-
-    res.render("list", {kindOfDay: day, newListItems :items})
+    //res.render("list", {kindOfDay: day, newListItems :items})
 });
 
 
 app.post("/", function(req,res){
-    var item = req.body.newItem;
-    items.push(item);
+    const itemName = req.body.newItem;
+    //console.log(req.body.newItem);
+    //items.push(item);
+    const item = new Item({
+        name: itemName
+    });
+    item.save();
 
     res.redirect("/");
     
+})
+
+app.post("/deleteitem", function(req,res){
+    //console.log(req.body.checkbox);
+    const checkedItemId = req.body.checkbox;
+    //res.redirect("/deleteitem");
+    Item.findByIdAndRemove(checkedItemId,function(err){
+        if(!err){
+           console.log("sucessfully delete checked item") 
+            res.redirect("/");
+        }
+    })
+
 })
 
 
